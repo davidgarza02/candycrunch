@@ -2,12 +2,13 @@
 using System.Collections;
 using System.Linq;
 using System.Collections.Generic;
+
 using UnityEngine.UI;
 
 
 public class ShapesManager : MonoBehaviour
 {
-    public Text DebugText, ScoreText;
+    public Text DebugText, ScoreText, TimerText, FinalScoreText;
     public bool ShowDebugInfo = false;
     //candy graphics taken from http://opengameart.org/content/candy-pack-1
 
@@ -15,8 +16,8 @@ public class ShapesManager : MonoBehaviour
 
     private int score;
 
-    public readonly Vector2 BottomRight = new Vector2(-2.37f, -4.27f);
-    public readonly Vector2 CandySize = new Vector2(0.7f, 0.7f);
+    public readonly Vector2 BottomRight = new Vector2(-1.5f, -2.5f);
+    public readonly Vector2 CandySize = new Vector2(0.35f, 0.35f);
 
     private GameState state = GameState.None;
     private GameObject hitGo = null;
@@ -24,6 +25,7 @@ public class ShapesManager : MonoBehaviour
     public GameObject[] CandyPrefabs;
     public GameObject[] ExplosionPrefabs;
     public GameObject[] BonusPrefabs;
+    public GameObject mainMenu = null;
 
     private IEnumerator CheckPotentialMatchesCoroutine;
     private IEnumerator AnimatePotentialMatchesCoroutine;
@@ -31,6 +33,11 @@ public class ShapesManager : MonoBehaviour
     IEnumerable<GameObject> potentialMatches;
 
     public SoundManager soundManager;
+
+    private int duration = 0; //Seconds
+    public int timeRemaining;
+    public bool isCountingDown = false;
+
     void Awake()
     {
         DebugText.enabled = ShowDebugInfo;
@@ -39,11 +46,83 @@ public class ShapesManager : MonoBehaviour
     // Use this for initialization
     void Start()
     {
+        ToggleMainMenu(true);
+
+    }
+
+    private void _tick() {
+        timeRemaining--;
+        TimerText.text = "Time remaining: " + timeRemaining;
+        if(timeRemaining > 0) {
+            Invoke ( "_tick", 1f );
+        } else {
+            state = GameState.None;
+            isCountingDown = false;
+            EndGame();
+        }
+    }
+
+    private void ToggleMainMenu(bool show){
+        ToggleObjVisibility(mainMenu, show);
+
+        if(show){
+            ToggleTextVisibility(ScoreText, false);
+            ToggleTextVisibility(TimerText, false);
+            ToggleTextVisibility(FinalScoreText, false);
+        } else {
+            ToggleTextVisibility(ScoreText, true);
+            ToggleTextVisibility(TimerText, true);
+        }
+    }
+
+    public void StartGame(int minutes){
+
+        ToggleMainMenu(false);
+
+        //duration = minutes*60;
+        duration = minutes;
+
         InitializeTypesOnPrefabShapesAndBonuses();
 
         InitializeCandyAndSpawnPositions();
 
         StartCheckForPotentialMatches();
+
+        if(!isCountingDown){
+            isCountingDown = true;
+            timeRemaining = duration;
+            Invoke ( "_tick", 1f );
+        }
+    }
+
+    public void EndGame(){
+        DestroyAllCandy();
+
+        ToggleMainMenu(true);
+
+        FinalScoreText.text = "FinalScore: " + score;
+
+        ToggleTextVisibility(FinalScoreText, true);
+    }
+
+    private void ToggleTextVisibility(Text text, bool toggle){
+        Vector2 hideVector = new Vector2(0,0);
+        Vector2 showVector = new Vector2(1,1);
+        if(toggle){
+            text.transform.localScale = showVector;
+        }else{
+            text.transform.localScale = hideVector;
+        }
+    }
+
+    private void ToggleObjVisibility(GameObject obj, bool toggle){
+        Vector2 hideVector = new Vector2(0,0);
+        Vector2 showVector = new Vector2(1,1);
+        if(toggle){
+            obj.transform.localScale = showVector ;
+        }else{
+            obj.transform.localScale = hideVector ;
+        }
     }
 
     /// <summary>
